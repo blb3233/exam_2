@@ -1,0 +1,180 @@
+---
+title: "Exam 2"
+author: "Brianna Baker"
+date: "6/26/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exam 2
+
+Load the library and save the data frame as inequality_data.
+
+
+```{r}
+library(rio)
+education_data = import("~/Desktop/inequality.xlsx", which =1)
+#saving data frame
+inequality_data <- education_data
+#removing education_data from environment
+rm(education_data)
+```
+
+## Question 3
+
+This is a cross-sectional dataset because it provides a snapshot of data from the same time and not change over time. We can see this is the code below. 
+
+```{r}
+summary(inequality_data$year)
+```
+
+
+##Using the subset command to show the inequality_gini scores for Denmark and Sweden
+```{r}
+library(dplyr)
+subset(inequality_data, country == "Denmark")
+subset(inequality_data, country == "Sweden")
+```
+##Inequality score for Brazil. 
+```{r}
+subset(inequality_data, country == "Brazil")
+```
+
+##Question 6
+Since Denamrk and Sweden were described as having "optimal Gini index scores," and they have much lower scores than Brazil, it appears that it is better to have a low inequality gini score. 
+
+###Quick peak at data frame:
+```{r}
+head(inequality_data)
+```
+###Removing accent with new function "accent.remove."
+```{r}
+#change default text encoding to UTF-8
+#define a function
+remove.accents <- function(s) {
+  #1 character substiutions
+  old1 <- "ú"
+  new1 <- "u"
+  s1 <- chartr(old1, new1, s)
+}
+#remove accents
+inequality_data$country <- remove.accents(inequality_data$country)
+```
+
+###Quick peak to show accent removal
+```{r}
+head(inequality_data)
+```
+
+###Sorting data by countries with lowest inequality_gini scores. 
+```{r}
+inequality_data <- inequality_data[order(inequality_data$inequality_gini),]
+#top 5 countries
+head(inequality_data)
+```
+
+###Mean of inequality gini scores
+```{r}
+mean(inequality_data$inequality_gini, na.rm = TRUE)
+```
+###Using if else to recode variables and assign values based on relation to mean. 
+for (r in 1:nrow(inequality_data)){
+  for(c in 1:ncol(inequality_data)) {
+    if(inequality_data$inequality_gini[r,c] > 36.81375) {
+      inequality_data[r,c] = "high_inequality"
+    }
+    else if(inequality_data$inequality_gini[r,c] < 36.81375) {
+      inequality_data[r,c] = "low_inequality"
+    }
+    else{
+    }
+  }
+}
+
+### Question 13
+```{r}
+#create vector
+actors <- c('World Bank', 'African Development Bank', 'Bill and Melinda Gates Foundation')
+
+#create for statement
+for (i in actors) {
+  print (i)
+}
+
+```
+###Question 14
+I chose the variable "Employment to population ratio" to demonstrate inequality because the comparison could show whether or not the majority of a country has employed inhabitants or not. The more employed, the lower the inquality- is my prediction. 
+
+```{r}
+library(devtools)
+library(remote)
+#add some data from the World Development Indicators (WDI)
+library(WDI)
+employment_ratio = WDI(country = "all",
+                      indicator = "SL.EMP.TOTL.SP.ZS", 
+                      start = 2015, end = 2015, extra = FALSE, cache = NULL)
+#quick peak 
+summary(employment_ratio)
+
+#changing name of variable 
+library(data.table)
+#changing name of column to something easier to interpret
+setnames(employment_ratio, "SL.EMP.TOTL.SP.ZS", "employment_ratio")
+```
+
+###Merge new variable into other dataset
+```{r}
+merged_df = left_join(inequality_data,
+                        employment_ratio,
+                        by = c("iso2c", "year"))
+
+```
+#drop country.y and rename country.x as country
+library(tidyverse)
+merged_df <-
+  merged_df %>%
+  select(-c("country.x")) %>%
+  rename("country" = "country.y")
+  
+###Removing NAs
+```{r}
+na.omit(merged_df, select =c("employment_ratio", "inequality_gini"))
+```
+
+##Filtering out data with inequality gini scores greater than 30
+```{r}
+data_greater_30 <- 
+  merged_df %>% 
+  dplyr::filter(inequality_gini > 30)
+```
+###Count how many countries contain "ai"
+```{r}
+grep("ai", data_greater_30)
+```
+
+###Using lapply to take sum of inequality gini
+```{r}
+lapply(data_greater_30$inequality_gini, sum)
+```
+###Labeling variables and save as Stata
+library(labelled)
+#use `` for variable names and "" for labels
+var_label(merged_df) <- list(`country` = "country"
+                               `year` = "year",
+                               `inequality_gini` = "inequality gini score",
+                               `population` = "population (inhabitants)",
+                               `iso2c` = "ISO-2 country code",
+                               `employment_ratio` = "ratio of employment to population")
+```{r}
+
+                              
+#save the data frame as a Stata dataset
+library(rio)
+#export(merged_df, "final_data.dta")
+
+```
+
+
